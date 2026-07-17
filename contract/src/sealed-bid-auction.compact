@@ -1,0 +1,204 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+// =============================================================================
+// Sealed-Bid Auction  (commit -> reveal, with per-bidder nullifiers)
+// -----------------------------------------------------------------------------
+// A first-price sealed-bid auction on Midnight, written in Compact.
+//
+// It runs as a two-phase state machine:
+//
+//   BIDDING  ->  REVEAL  ->  ENDED
+//
+//   * BIDDING: each bidder submits a *commitment* -- persistentHash(amount, salt).
+//     The amount and salt stay on the bidder's own machine; only the hash is
+//     written on chain, so nobody (not even the auctioneer) can see any bid.
+//   * REVEAL:  the auctioneer opens revealing. A bidder re-supplies their amount
+//     and salt; the contract recomputes the commitment, checks it matches what
+//     was stored, and tracks the highest valid bid. Bids that are never revealed
+//     stay private forever -- they simply do not count.
+//   * ENDED:   the auctioneer closes the auction. The final highest revealed bid
+//     and its (pseudonymous) bidder are the public result.
+//
+// WHY NULLIFIERS
+// --------------
+// Compact has no implicit msg.sender, so a caller proves who they are by knowing
+// a secret key supplied through the `localSecretKey` witness. From that key we
+// derive a *nullifier*: a one-way, domain-separated hash that is deterministic
+// per bidder. The nullifier -- not the secret key -- is what goes on chain.
+//
+//   * It blocks double-bidding: a second bid recomputes the SAME nullifier, which
+//     is already a key in `commitments`, so the second attempt is rejected.
+//   * It is domain-separated (tagged "sbid:v1:nullifier") so a bidder's auction
+//     nullifier can never be confused with, or linked to, any other hash derived
+//     from the same key -- including the auctioneer identity below, which uses a
+//     different tag.
+//
+// HONEST SCOPE
+// ------------
+//   * Private: every bid amount during BIDDING, and any bid that is never
+//     revealed. The secret key itself is never disclosed.
+//   * Public: the nullifier of anyone who bids, the commitments, and -- once
+//     revealed -- the winning amount and winning nullifier. This is a first-price
+//     auction with private bids, not a fully secret tally.
+// =============================================================================
+
+// ---- A sealed bid: the private preimage a commitment is built from ----------
+struct SealedBid {
+  amount: Uint<64>,
+  salt: Bytes<32>,
+}
+
+// ---- Public ledger state (visible to everyone) ------------------------------
+
+// The auctioneer's identity nullifier. Set once, in the constructor.
+export sealed ledger auctioneer: Bytes<32>;
+
+// A human-readable description of the item being auctioned.
+export sealed ledger item: Opaque<"string">;
+
+// Auction phase: 0 = Bidding, 1 = Reveal, 2 = Ended.
+export ledger phase: Uint<8>;
+
+// bidder nullifier -> their sealed commitment. The KEY set of this map is the
+// set of spent bid-nullifiers, so `commitments.member(nf)` is the double-bid
+// guard. The VALUE reveals nothing about the amount.
+export ledger commitments: Map<Bytes<32>, Bytes<32>>;
+
+// bidder nullifiers that have already revealed (the double-reveal guard).
+export ledger revealedNullifiers: Set<Bytes<32>>;
+
+// The highest revealed bid so far, and the nullifier that placed it.
+export ledger highestBid: Uint<64>;
+export ledger highestBidder: Bytes<32>;
+export ledger hasWinner: Boolean;
+
+// How many sealed bids have been placed (public count; amounts stay hidden).
+export ledger bidCount: Uint<64>;
+
+// ---- Private witnesses (run locally; never leave the user's machine) ---------
+
+witness localSecretKey(): Bytes<32>;   // the caller's identity key
+witness localBidAmount(): Uint<64>;    // the caller's secret bid amount
+witness localBidSalt(): Bytes<32>;     // the caller's secret salt
+
+// ---- Nullifier / identity derivation ----------------------------------------
+
+// A bidder's nullifier for THIS auction: a one-way, domain-separated hash of
+// their secret key. Deterministic per key, so a repeat bid collides with the
+// nullifier already stored. Exported + pure so a dApp/test can precompute it.
+export pure circuit bidNullifier(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "sbid:v1:nullifier"), sk]);
+}
+
+// The auctioneer's identity: a DIFFERENT domain tag from the bid nullifier, so
+// the auctioneer's on-chain id can never be linked to any bid nullifier.
+export pure circuit auctioneerId(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "sbid:v1:owner"), sk]);
+}
+
+circuit callerNullifier(): Bytes<32> {
+  return bidNullifier(localSecretKey());
+}
+
+// ---- Commitment helper ------------------------------------------------------
+
+// The commitment that seals a bid: persistentHash(amount, salt). Exported + pure
+// so a dApp or test can compute the same value off-chain to check a reveal.
+export pure circuit makeCommitment(amount: Uint<64>, salt: Bytes<32>): Bytes<32> {
+  return persistentHash<SealedBid>(SealedBid { amount: amount, salt: salt });
+}
+
+// ---- Access guard -----------------------------------------------------------
+
+// Reverts unless the caller can prove they are the auctioneer. Asserting on a
+// witness-derived value does not require `disclose`.
+circuit assertAuctioneer(): [] {
+  assert(auctioneerId(localSecretKey()) == auctioneer,
+    "SealedBidAuction: caller is not the auctioneer");
+}
+
+// ---- Constructor ------------------------------------------------------------
+
+// Whoever deploys becomes the auctioneer. The auction opens in the Bidding phase.
+constructor(itemDescription: Opaque<"string">) {
+  auctioneer = disclose(auctioneerId(localSecretKey()));
+  item = disclose(itemDescription);
+  phase = 0;
+  highestBid = 0;
+  hasWinner = false;
+  bidCount = 0;
+}
+
+// ---- Read circuits ----------------------------------------------------------
+
+export circuit currentPhase(): Uint<8> {
+  return phase;
+}
+
+// Has the bidder behind `nf` already placed a sealed bid? (Anyone can check a
+// nullifier; it reveals no identity.)
+export circuit isBidPlaced(nf: Bytes<32>): Boolean {
+  return commitments.member(disclose(nf));
+}
+
+// ---- Bidding phase ----------------------------------------------------------
+
+// Place a sealed bid. Only the commitment is stored; the amount stays hidden.
+// The caller's nullifier is the map key, so a second bid from the same key is
+// rejected.
+export circuit placeSealedBid(): [] {
+  assert(phase == 0, "SealedBidAuction: bidding is closed");
+  const nf = callerNullifier();
+  assert(!commitments.member(disclose(nf)),
+    "SealedBidAuction: this nullifier has already bid");
+
+  const commitment = makeCommitment(localBidAmount(), localBidSalt());
+  commitments.insert(disclose(nf), disclose(commitment));
+  bidCount = (bidCount + 1) as Uint<64>;
+}
+
+// ---- Phase transitions (auctioneer only) ------------------------------------
+
+export circuit openRevealPhase(): [] {
+  assertAuctioneer();
+  assert(phase == 0, "SealedBidAuction: can only open reveal from bidding");
+  phase = 1;
+}
+
+export circuit endAuction(): [] {
+  assertAuctioneer();
+  assert(phase == 1, "SealedBidAuction: can only end from the reveal phase");
+  phase = 2;
+}
+
+// ---- Reveal phase -----------------------------------------------------------
+
+// Reveal a previously sealed bid. The contract recomputes the commitment from
+// the revealed amount + salt and checks it matches what was stored. A valid
+// reveal that beats the current best becomes the new highest bid. The revealed
+// amount becomes public; un-revealed bids stay private forever.
+export circuit revealBid(): [] {
+  assert(phase == 1, "SealedBidAuction: not in the reveal phase");
+  const nf = callerNullifier();
+  assert(commitments.member(disclose(nf)),
+    "SealedBidAuction: no sealed bid found for this nullifier");
+  assert(!revealedNullifiers.member(disclose(nf)),
+    "SealedBidAuction: this nullifier has already revealed");
+
+  const amount = localBidAmount();
+  const expected = commitments.lookup(disclose(nf));
+  const actual = makeCommitment(amount, localBidSalt());
+  assert(actual == expected,
+    "SealedBidAuction: reveal does not match your sealed bid");
+
+  revealedNullifiers.insert(disclose(nf));
+
+  const revealedAmount = disclose(amount);
+  if (revealedAmount > highestBid) {
+    highestBid = revealedAmount;
+    highestBidder = disclose(nf);
+    hasWinner = true;
+  }
+}

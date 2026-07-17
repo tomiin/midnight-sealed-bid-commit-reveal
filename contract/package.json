@@ -1,0 +1,36 @@
+{
+  "name": "sealed-bid-commit-reveal-contract",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "compact": "compact compile src/sealed-bid-auction.compact src/managed/sealed-bid-auction",
+    "compact-fast": "compact compile --skip-zk src/sealed-bid-auction.compact src/managed/sealed-bid-auction",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:compile": "npm run compact && vitest run",
+    "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/managed ./dist/managed && cp ./src/sealed-bid-auction.compact ./dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "pino": "9.7.0",
+    "pino-pretty": "13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.0"
+  }
+}
