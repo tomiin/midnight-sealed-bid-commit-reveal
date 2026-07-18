@@ -15,6 +15,27 @@ This is a fresh take on the idea, and the thing I actually wanted to get right
 this time is the **nullifier**: a one-way, per-bidder fingerprint that blocks
 anyone from bidding twice without ever putting their identity on chain.
 
+## Deployed on Midnight Preprod
+
+This contract is live on Midnight **Preprod**:
+
+- **Contract address:** `ad08e233a172874748b05ab40a30c9217699650115aa5650c3c671accfee4244`
+- **Network:** Preprod (`rpc.preprod.midnight.network`)
+- **On-chain interaction:** deployed and then exercised with a `placeSealedBid`
+  call — both submitted from the CLI in [`deploy/`](deploy/).
+
+The [`deploy/`](deploy/) folder is the deployment + interaction interface: a small
+TypeScript CLI (`npm run deploy -- "<item description>"`) that builds the wallet,
+proves the transaction, and submits the deploy plus the first on-chain interaction
+to Preprod. Read or extend it from there.
+
+> Deploying to Preprod can hit error 170 (`InvalidDustSpendProof`) when the wallet's
+> DUST fee state is a step behind the chain tip. The deploy CLI handles it by
+> *rebuilding and re-balancing* the transaction on each retry instead of resubmitting
+> a stale one — the same fix I worked out building my Midnight wallet CLI.
+
+Full deploy gotchas (error 170, stale DUST, the private-state password): [`deploy/ROADBLOCKS.md`](deploy/ROADBLOCKS.md).
+
 ## How it works (in plain English)
 
 The auction is a little state machine with three stages: **Bidding → Reveal →
