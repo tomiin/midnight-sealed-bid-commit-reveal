@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  contract:
+    name: Compile and test the Compact contract
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contract
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the Compact toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          echo "$HOME/.compact/bin" >> "$GITHUB_PATH"
+
+      - name: Pin the compiler
+        run: compact update 0.31.0
+
+      - run: npm ci
+
+      # --skip-zk: CI is checking that the contract still compiles and that the
+      # circuits typecheck. Generating PLONK keys takes minutes and adds nothing
+      # to that signal, so key generation is left to the local build that
+      # actually deploys.
+      - name: Compile
+        run: npm run compact-fast
+
+      - name: Test
+        run: npm test
