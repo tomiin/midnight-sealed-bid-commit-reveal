@@ -84,6 +84,26 @@ to Preprod. Read or extend it from there.
 
 Full deploy gotchas (error 170, stale DUST, the private-state password): [`deploy/ROADBLOCKS.md`](deploy/ROADBLOCKS.md).
 
+## Screenshots
+
+The contract compiling, with every circuit's `k` and row count:
+
+![compile output](docs/screenshots/compile-output.png)
+
+The deployed contract on the Preprod explorer:
+
+![deployed on preprod](docs/screenshots/deployed-preprod.png)
+
+## CI
+
+Every push to `main` and every pull request compiles the contract and runs the
+test suite. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+The workflow compiles with `--skip-zk`. CI is answering "does this still compile
+and do the circuits typecheck", and generating PLONK proving keys takes minutes
+without improving that answer. Key generation belongs to the local build that
+actually deploys.
+
 ## How it works (in plain English)
 
 The auction is a little state machine with three stages: **Bidding → Reveal →
