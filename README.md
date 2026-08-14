@@ -15,6 +15,54 @@ This is a fresh take on the idea, and the thing I actually wanted to get right
 this time is the **nullifier**: a one-way, per-bidder fingerprint that blocks
 anyone from bidding twice without ever putting their identity on chain.
 
+## Initial idea
+
+Sealed-bid auctions exist because seeing other people's bids changes what you
+bid. The usual fix is a trusted auctioneer who holds the envelopes and promises
+not to peek, which just moves the trust rather than removing it. This contract
+removes it. Bidders commit to an amount by publishing a hash, and nobody
+including the auctioneer can read a bid while bidding is open. When the reveal
+phase starts, each bidder opens their own envelope and the contract checks the
+number against the commitment locked in earlier, so nobody can change their bid
+after seeing someone else's. A per-bidder nullifier blocks a second bid from the
+same identity without that identity ever reaching the chain. The natural users
+are anywhere bid privacy is the whole point and a neutral auctioneer is hard to
+find: procurement, spectrum and land allocation, over-the-counter asset sales,
+and on-chain NFT or token auctions where mempool visibility currently lets people
+snipe.
+
+## Public state vs private witness
+
+The split Compact forces you to make, stated plainly.
+
+**Public ledger state** — on-chain, readable by anyone:
+
+| field | what it is |
+| --- | --- |
+| `phase` | which stage the auction is in |
+| `commitments` | nullifier to bid commitment, both opaque hashes |
+| `revealedNullifiers` | who has revealed, as nullifiers not identities |
+| `highestBid`, `highestBidder`, `hasWinner` | the outcome once revealing starts |
+| `bidCount` | how many bids were placed |
+
+**Private witnesses** — supplied by the bidder's own device, consumed inside the
+proof, never written to the chain:
+
+| witness | what it is |
+| --- | --- |
+| `localSecretKey()` | the bidder's identity key |
+| `localBidAmount()` | the amount they are bidding |
+| `localBidSalt()` | the salt that makes the commitment unguessable |
+
+**What a bidder proves without revealing.** At commit time: that they are a
+distinct bidder who has not already bid, without publishing who they are. At
+reveal time: that the amount they are now claiming is the same one they
+committed to earlier, without anyone having been able to read it in between.
+
+The salt matters more than it looks. Bid amounts come from a small range, so a
+commitment to the amount alone could be brute-forced by hashing every plausible
+number. The salt is what makes the envelope actually opaque.
+
 ## Deployed on Midnight Preprod
 
 This contract is live on Midnight **Preprod**:
