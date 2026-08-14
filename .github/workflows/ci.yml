@@ -12,11 +12,15 @@ jobs:
     defaults:
       run:
         working-directory: contract
+        # pipefail matters here: the toolchain is installed with `curl ... | sh`,
+        # and without it a failed download pipes an empty script into a shell
+        # that exits 0. CI would go green having installed nothing.
+        shell: bash -euo pipefail {0}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -29,14 +33,24 @@ jobs:
       - name: Pin the compiler
         run: compact update 0.31.0
 
+      - name: Report toolchain versions
+        run: |
+          compact --version
+          compact compile --version
+          compact compile --language-version
+          node --version
+
       - run: npm ci
 
-      # --skip-zk: CI is checking that the contract still compiles and that the
-      # circuits typecheck. Generating PLONK keys takes minutes and adds nothing
-      # to that signal, so key generation is left to the local build that
+      # --skip-zk: CI is answering "does this still compile and do the circuits
+      # typecheck". Generating PLONK proving keys takes minutes and does not
+      # improve that answer, so key generation stays in the local build that
       # actually deploys.
       - name: Compile
         run: npm run compact-fast
+
+      - name: Check the compiler actually emitted a contract
+        run: test -f src/managed/sealed-bid-auction/contract/index.js
 
       - name: Test
         run: npm test
