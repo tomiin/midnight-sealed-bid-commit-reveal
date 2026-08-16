@@ -84,6 +84,76 @@ to Preprod. Read or extend it from there.
 
 Full deploy gotchas (error 170, stale DUST, the private-state password): [`deploy/ROADBLOCKS.md`](deploy/ROADBLOCKS.md).
 
+## The privacy claim
+
+The claim this project makes is narrow and testable:
+
+> The contract can prove that **you have already bid** without learning **who you
+> are** or **what you bid**.
+
+Here is exactly how that works, and where it stops.
+
+Two values reach the chain when you bid:
+
+```
+commitment = persistentHash(amount, salt)            // hides the amount
+nullifier  = persistentHash("sbid:v1:nullifier", sk) // identifies the bid, not you
+```
+
+Your bid amount, its salt and your secret key never leave the browser. They are
+supplied to the circuit as witnesses at proving time, and the proof convinces the
+network the rules were followed without revealing any of them.
+
+**The observable behavior.** Bid once and your row appears in the public ledger
+table marked `sealed`: a nullifier, a commitment, and no amount. Bid a second
+time and the contract rejects it:
+
+```
+failed assert: SealedBidAuction: this nullifier has already bid
+```
+
+That rejection is the privacy claim made visible. The contract recomputed your
+nullifier from your secret key, found it already present as a key in the
+`commitments` map, and refused — while still holding no idea who you are and no
+idea what either bid was worth. Proven, not shown.
+
+**Domain separation.** The auctioneer's identity is derived from the same secret
+key but under a different tag, `sbid:v1:owner`. Because the tags differ, the
+auctioneer's on-chain id cannot be linked to their bid nullifier, even though
+both come from one key.
+
+**Where the privacy stops, honestly.** The nullifier of anyone who bids is
+public, as is the fact that a bid was placed and its commitment. Once a bidder
+chooses to reveal, the winning amount becomes public — that is a first-price
+auction with sealed bids, not a secret tally. Anyone who never reveals keeps
+their bid private permanently. Timing and transaction metadata are not hidden.
+
+**Private state is deliberately not persisted.** The amount and salt live in
+memory for the life of the tab. Reload the page between bidding and revealing
+and you cannot reveal. That is the intended trade: a losing bid should not be
+recoverable from your machine after the auction, so it is never written to disk.
+
+## Wallet support
+
+This DApp targets the Midnight **DApp Connector API**, not a particular wallet.
+It enumerates every wallet injected on `window.midnight` rather than reading a
+fixed key, verifies the wallet is on the network the app expects, and
+feature-detects `getProvingProvider`:
+
+- wallets that implement it (**1AM**) get **delegated proving**
+- wallets that do not (**Lace**) fall back to a proof server, per Midnight's
+  recommended conditional fallback
+
+Either way the bid amount is proven locally and never sent to a third party.
+
+**Demonstrated on 1AM on Preprod.** Lace currently fails at `connect()` with
+`InternalError: "Wallet is unavailable"`, thrown from inside its own service
+worker, with `apiVersion` 4.0.1 matching the pinned `@midnight-ntwrk/dapp-connector-api`
+and a call shape identical to Midnight's official React connector guide. Midnight's
+Aliit Fellowship publishes 1AM as the recommended Preprod setup and documents Lace
+sync and authentication timeouts on that network. No code change here will be
+needed when Lace catches up.
+
 ## Screenshots
 
 The contract compiling, with every circuit's `k` and row count:
