@@ -93,10 +93,15 @@ Full deploy gotchas (error 170, stale DUST, the private-state password): [`deplo
 Bring a Midnight wallet on Preprod and you can bid against the deployed contract
 yourself. Nothing is simulated.
 
-**One-minute walkthrough:** [`docs/l3-demo.mp4`](docs/l3-demo.mp4) — the full
-flow, the test suite passing, and the CI badge green.
+This project was built across the Rise In levels, and each recording is kept
+rather than replaced, so the progression is visible.
 
-**Longer recording:** [`docs/sealed-bid-demo.mp4`](docs/sealed-bid-demo.mp4) — connecting a wallet,
+**Two-minute walkthrough (Level 3):** [`docs/l3-demo.mp4`](docs/l3-demo.mp4) —
+the full flow end to end, the test suite passing, and the CI badge green. It
+runs a little past a minute because proof generation happens in real time and
+is not cut out: the wait you see is the circuit actually being proved.
+
+**Wallet and circuit call (Level 2):** [`docs/sealed-bid-demo.mp4`](docs/sealed-bid-demo.mp4) — connecting a wallet,
 joining the auction on Preprod, committing a sealed bid, revealing it, and
 disconnecting.
 
@@ -205,15 +210,15 @@ needed when Lace catches up.
 
 ## Screenshots
 
-The contract compiling, with every circuit's `k` and row count:
+The contract compiling, with every circuit's `k` and row count (Level 1):
 
 ![compile output](docs/screenshots/compile-output.png)
 
-The test suite, 14 tests passing:
+The test suite, 14 tests passing (Level 3):
 
 ![test output](docs/screenshots/test-output.png)
 
-The deployed contract on the Preprod explorer:
+The deployed contract on the Preprod explorer (Level 1):
 
 ![deployed on preprod](docs/screenshots/deployed-preprod.png)
 
