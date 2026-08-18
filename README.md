@@ -86,7 +86,12 @@ Full deploy gotchas (error 170, stale DUST, the private-state password): [`deplo
 
 ## Demo
 
-[`docs/sealed-bid-demo.mp4`](docs/sealed-bid-demo.mp4) — connecting a wallet,
+**Live app: https://midnight-sealed-bid-commit-reveal.vercel.app**
+
+Bring a Midnight wallet on Preprod and you can bid against the deployed contract
+yourself. Nothing is simulated.
+
+**Recording:** [`docs/sealed-bid-demo.mp4`](docs/sealed-bid-demo.mp4) — connecting a wallet,
 joining the auction on Preprod, committing a sealed bid, revealing it, and
 disconnecting.
 
