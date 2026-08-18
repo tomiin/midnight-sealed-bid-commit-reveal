@@ -1,5 +1,7 @@
 # Sealed-Bid Auction (Commit-Reveal)
 
+[![CI](https://github.com/tomiin/midnight-sealed-bid-commit-reveal/actions/workflows/ci.yml/badge.svg)](https://github.com/tomiin/midnight-sealed-bid-commit-reveal/actions/workflows/ci.yml)
+
 A small sealed-bid auction I built on the **Midnight** network, written in
 Compact. The whole point is privacy during bidding: while the auction is open,
 nobody — not other bidders, not even the auctioneer — can see what anyone bid.
@@ -103,6 +105,30 @@ sealed bid from the demo is verifiable on-chain:
 Proofs are generated locally — in the wallet where it supports delegated
 proving, otherwise against a proof server on your own machine. The bid amount
 is never transmitted to anyone.
+
+## Privacy Model
+
+**PUBLIC** — written to the ledger, readable by anyone:
+
+- the auctioneer's id, the item description, and the current phase
+- every bidder's **nullifier** and their **commitment**
+- the number of bids, and once revealed, the winning amount and winning nullifier
+
+**PRIVATE** — supplied as witnesses at proving time, never transmitted:
+
+- `localSecretKey` — your identity key
+- `localBidAmount` — what you bid
+- `localBidSalt` — the salt that seals the commitment
+
+**PROVED without revealing:**
+
+- that you are entitled to bid, without revealing who you are
+- that your bid is sealed to a specific amount, without revealing the amount
+- that you have **not already bid**, without revealing your identity — a second
+  bid recomputes the same nullifier, is found in the commitments map, and is
+  rejected
+- at reveal, that the amount you disclose is the one you originally committed
+  to, so a bid cannot be changed after seeing the others
 
 ## The privacy claim
 
