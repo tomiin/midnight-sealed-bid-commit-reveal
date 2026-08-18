@@ -50,6 +50,32 @@ rules held: that the bidder is entitled to bid, that they have not bid twice,
 and at reveal that the amount disclosed is the one originally committed to. A
 contractor who never reveals keeps their number private for good.
 
+There is a second reason, and it is the one most people miss because it sits
+outside the contract entirely: **how the fee gets paid.**
+
+On Ethereum you pay gas in ETH from the address that sends the transaction. That
+address has a funding history, and that history usually leads back to an
+exchange with your name on it. So even a flawless zero-knowledge circuit can be
+undone by the payment that carried it. For a tender this is fatal in a very
+ordinary way: a contractor's bid is cryptographically sealed, but the gas
+payment says which company submitted it, and in a jurisdiction with nine
+construction firms, knowing *who bid* is most of what a rigger needs.
+
+Midnight separates the two. You hold NIGHT, which continuously generates DUST,
+and DUST is what pays fees. DUST is non-transferable, it decays when
+disassociated from the NIGHT that produced it, and it is consumed rather than
+sent. Because it is shielded, paying a fee does not reveal the sender or the
+transaction, which removes fee-based transaction analysis as an attack.
+
+That matters here more than it would for most applications. A sealed-bid auction
+has a small, known set of participants, so the anonymity set is tiny and any
+side channel collapses it. Sealing the bid amount is not enough on its own; the
+act of bidding has to be unlinkable too, and the fee is the channel that
+normally gives it away. It also has a practical benefit for the agency: because
+holding NIGHT grants ongoing transaction capacity rather than being spent down,
+running tenders does not mean repeatedly buying tokens to cover gas, which is
+its own procurement problem.
+
 The property I care about most is the double-bid check. The contract proves you
 have already bid without learning who you are. On a transparent chain you would
 enforce that with an address allowlist, which means publishing exactly who is
