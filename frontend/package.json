@@ -1,22 +1,44 @@
 {
   "name": "sealed-bid-commit-reveal-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "sync-contract": "rm -rf src/managed public/managed public/keys public/zkir && mkdir -p src/managed/sealed-bid-auction public/managed/sealed-bid-auction && cp -R ../contract/src/managed/sealed-bid-auction/contract src/managed/sealed-bid-auction/ && cp -R ../contract/src/managed/sealed-bid-auction/keys public/keys && cp -R ../contract/src/managed/sealed-bid-auction/zkir public/zkir && cp -R ../contract/src/managed/sealed-bid-auction/keys ../contract/src/managed/sealed-bid-auction/zkir public/managed/sealed-bid-auction/",
+    "dev": "npm run sync-contract && vite",
+    "build": "npm run sync-contract && tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@midnight-ntwrk/compact-js": "2.5.1",
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
+    "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "4.1.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@originjs/vite-plugin-commonjs": "^1.0.3",
+    "@types/node": "^22.0.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react": "^4.5.0",
     "typescript": "^5.8.3",
-    "vite": "^5.4.0"
+    "vite": "^7.0.0",
+    "vite-plugin-node-polyfills": "^0.28.0",
+    "vite-plugin-wasm": "^3.4.1"
+  },
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
   }
 }
