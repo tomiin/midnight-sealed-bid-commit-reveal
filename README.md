@@ -93,7 +93,10 @@ Full deploy gotchas (error 170, stale DUST, the private-state password): [`deplo
 Bring a Midnight wallet on Preprod and you can bid against the deployed contract
 yourself. Nothing is simulated.
 
-**Recording:** [`docs/sealed-bid-demo.mp4`](docs/sealed-bid-demo.mp4) — connecting a wallet,
+**One-minute walkthrough:** [`docs/l3-demo.mp4`](docs/l3-demo.mp4) — the full
+flow, the test suite passing, and the CI badge green.
+
+**Longer recording:** [`docs/sealed-bid-demo.mp4`](docs/sealed-bid-demo.mp4) — connecting a wallet,
 joining the auction on Preprod, committing a sealed bid, revealing it, and
 disconnecting.
 
@@ -205,6 +208,10 @@ needed when Lace catches up.
 The contract compiling, with every circuit's `k` and row count:
 
 ![compile output](docs/screenshots/compile-output.png)
+
+The test suite, 14 tests passing:
+
+![test output](docs/screenshots/test-output.png)
 
 The deployed contract on the Preprod explorer:
 
