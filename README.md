@@ -84,6 +84,21 @@ to Preprod. Read or extend it from there.
 
 Full deploy gotchas (error 170, stale DUST, the private-state password): [`deploy/ROADBLOCKS.md`](deploy/ROADBLOCKS.md).
 
+## Demo
+
+[`docs/sealed-bid-demo.mp4`](docs/sealed-bid-demo.mp4) — connecting a wallet,
+joining the auction on Preprod, committing a sealed bid, revealing it, and
+disconnecting.
+
+Every action in that recording is a real transaction on Midnight Preprod. The
+sealed bid from the demo is verifiable on-chain:
+
+- **Bid transaction:** [`96c824a4…a15946`](https://explorer.1am.xyz/tx/96c824a4aab3d3fcbbab88299003290cbd921555a3e0cbdf0ba46cb8b3a15946?network=preprod)
+
+Proofs are generated locally — in the wallet where it supports delegated
+proving, otherwise against a proof server on your own machine. The bid amount
+is never transmitted to anyone.
+
 ## The privacy claim
 
 The claim this project makes is narrow and testable:
